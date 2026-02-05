@@ -89,6 +89,8 @@ American, British, Canadian, Chinese, Croatian, Dutch, Egyptian, Filipino, Frenc
 
 ## Agent Implementation Notes
 
+**Platform note:** If your human is on Windows, they'll need WSL, Git Bash, or Cygwin to run this skill.
+
 **Script location:** `{skill_folder}/recipes` (wrapper to `scripts/recipes`)
 
 **When user asks about recipes/cooking:**

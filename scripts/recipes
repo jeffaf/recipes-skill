@@ -1,0 +1,145 @@
+#!/usr/bin/env bash
+# recipes - TheMealDB API CLI for recipe lookups
+# Usage: recipes <command> [args]
+
+set -euo pipefail
+
+API="https://www.themealdb.com/api/json/v1/1"
+
+usage() {
+    cat <<EOF
+Usage: recipes <command> [args]
+
+Commands:
+  search <query>    Search meals by name
+  info <id>         Get full meal details by ID
+  random            Get a random meal
+  categories        List all meal categories
+  area <area>       List meals by area (Italian, Mexican, etc.)
+
+Examples:
+  recipes search "pasta"
+  recipes info 52772
+  recipes random
+  recipes categories
+  recipes area Italian
+EOF
+    exit 1
+}
+
+fetch() {
+    curl -sf "$1" || { echo "API error" >&2; exit 1; }
+}
+
+format_meal() {
+    jq -r '
+        .meals // [] | 
+        if length == 0 then "No meals found." 
+        else .[] | "[\(.idMeal)] \(.strMeal) — \(.strArea // "Unknown"), \(.strCategory // "Uncategorized")"
+        end
+    '
+}
+
+format_meal_full() {
+    jq -r '
+        .meals[0] // empty |
+        "🍽️  \(.strMeal)\n" +
+        "   ID: \(.idMeal) | Category: \(.strCategory) | Area: \(.strArea)\n" +
+        (if .strTags and .strTags != "" then "   Tags: \(.strTags)\n" else "" end) +
+        "\n📝 Ingredients:\n" +
+        ([range(1;21) | 
+            . as $i | 
+            ($ARGS.named["strIngredient\($i)"] // "") as $ing |
+            ($ARGS.named["strMeasure\($i)"] // "") as $meas |
+            if $ing != "" and $ing != null then "   • \($meas) \($ing)" else empty end
+        ] | join("\n")) +
+        "\n\n📖 Instructions:\n\(.strInstructions)\n" +
+        (if .strYoutube and .strYoutube != "" then "\n🎥 Video: \(.strYoutube)\n" else "" end) +
+        (if .strSource and .strSource != "" then "📎 Source: \(.strSource)\n" else "" end)
+    ' --jsonargs
+}
+
+format_meal_full_v2() {
+    jq -r '
+        .meals[0] // empty |
+        "🍽️  \(.strMeal)\n" +
+        "   ID: \(.idMeal) | Category: \(.strCategory) | Area: \(.strArea)\n" +
+        (if .strTags and .strTags != "" then "   Tags: \(.strTags)\n" else "" end) +
+        "\n📝 Ingredients:\n" +
+        (
+            [
+                (if .strIngredient1 != "" and .strIngredient1 != null then "   • \(.strMeasure1 // "") \(.strIngredient1)" else empty end),
+                (if .strIngredient2 != "" and .strIngredient2 != null then "   • \(.strMeasure2 // "") \(.strIngredient2)" else empty end),
+                (if .strIngredient3 != "" and .strIngredient3 != null then "   • \(.strMeasure3 // "") \(.strIngredient3)" else empty end),
+                (if .strIngredient4 != "" and .strIngredient4 != null then "   • \(.strMeasure4 // "") \(.strIngredient4)" else empty end),
+                (if .strIngredient5 != "" and .strIngredient5 != null then "   • \(.strMeasure5 // "") \(.strIngredient5)" else empty end),
+                (if .strIngredient6 != "" and .strIngredient6 != null then "   • \(.strMeasure6 // "") \(.strIngredient6)" else empty end),
+                (if .strIngredient7 != "" and .strIngredient7 != null then "   • \(.strMeasure7 // "") \(.strIngredient7)" else empty end),
+                (if .strIngredient8 != "" and .strIngredient8 != null then "   • \(.strMeasure8 // "") \(.strIngredient8)" else empty end),
+                (if .strIngredient9 != "" and .strIngredient9 != null then "   • \(.strMeasure9 // "") \(.strIngredient9)" else empty end),
+                (if .strIngredient10 != "" and .strIngredient10 != null then "   • \(.strMeasure10 // "") \(.strIngredient10)" else empty end),
+                (if .strIngredient11 != "" and .strIngredient11 != null then "   • \(.strMeasure11 // "") \(.strIngredient11)" else empty end),
+                (if .strIngredient12 != "" and .strIngredient12 != null then "   • \(.strMeasure12 // "") \(.strIngredient12)" else empty end),
+                (if .strIngredient13 != "" and .strIngredient13 != null then "   • \(.strMeasure13 // "") \(.strIngredient13)" else empty end),
+                (if .strIngredient14 != "" and .strIngredient14 != null then "   • \(.strMeasure14 // "") \(.strIngredient14)" else empty end),
+                (if .strIngredient15 != "" and .strIngredient15 != null then "   • \(.strMeasure15 // "") \(.strIngredient15)" else empty end),
+                (if .strIngredient16 != "" and .strIngredient16 != null then "   • \(.strMeasure16 // "") \(.strIngredient16)" else empty end),
+                (if .strIngredient17 != "" and .strIngredient17 != null then "   • \(.strMeasure17 // "") \(.strIngredient17)" else empty end),
+                (if .strIngredient18 != "" and .strIngredient18 != null then "   • \(.strMeasure18 // "") \(.strIngredient18)" else empty end),
+                (if .strIngredient19 != "" and .strIngredient19 != null then "   • \(.strMeasure19 // "") \(.strIngredient19)" else empty end),
+                (if .strIngredient20 != "" and .strIngredient20 != null then "   • \(.strMeasure20 // "") \(.strIngredient20)" else empty end)
+            ] | join("\n")
+        ) +
+        "\n\n📖 Instructions:\n\(.strInstructions)\n" +
+        (if .strYoutube and .strYoutube != "" then "\n🎥 Video: \(.strYoutube)\n" else "" end) +
+        (if .strSource and .strSource != "" then "📎 Source: \(.strSource)\n" else "" end)
+    '
+}
+
+format_categories() {
+    jq -r '.categories[] | "[\(.idCategory)] \(.strCategory) — \(.strCategoryDescription | .[0:80])..."'
+}
+
+format_filter() {
+    jq -r '
+        .meals // [] |
+        if length == 0 then "No meals found."
+        else .[] | "[\(.idMeal)] \(.strMeal)"
+        end
+    '
+}
+
+cmd_search() {
+    [[ -z "${1:-}" ]] && { echo "Usage: recipes search <query>" >&2; exit 1; }
+    fetch "$API/search.php?s=$(printf '%s' "$1" | jq -sRr @uri)" | format_meal
+}
+
+cmd_info() {
+    [[ -z "${1:-}" ]] && { echo "Usage: recipes info <meal_id>" >&2; exit 1; }
+    fetch "$API/lookup.php?i=$1" | format_meal_full_v2
+}
+
+cmd_random() {
+    fetch "$API/random.php" | format_meal_full_v2
+}
+
+cmd_categories() {
+    fetch "$API/categories.php" | format_categories
+}
+
+cmd_area() {
+    [[ -z "${1:-}" ]] && { echo "Usage: recipes area <area>" >&2; exit 1; }
+    fetch "$API/filter.php?a=$(printf '%s' "$1" | jq -sRr @uri)" | format_filter
+}
+
+[[ $# -lt 1 ]] && usage
+
+case "$1" in
+    search)     shift; cmd_search "$@" ;;
+    info)       shift; cmd_info "$@" ;;
+    random)     cmd_random ;;
+    categories) cmd_categories ;;
+    area)       shift; cmd_area "$@" ;;
+    -h|--help|help) usage ;;
+    *) echo "Unknown command: $1" >&2; usage ;;
+esac

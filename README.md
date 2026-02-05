@@ -23,6 +23,8 @@ ln -s $(pwd)/recipes ~/bin/recipes
 - curl
 - jq
 
+> **Windows users:** Requires WSL, Git Bash, or Cygwin.
+
 
 ## Usage
 

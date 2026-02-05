@@ -18,9 +18,11 @@ ln -s $(pwd)/recipes ~/bin/recipes
 
 ## Requirements
 
+
 - bash
 - curl
 - jq
+
 
 ## Usage
 
